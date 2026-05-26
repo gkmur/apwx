@@ -86,17 +86,42 @@ Plan format:
 }
 ```
 
-## End-to-end cleanup workflow
+## End-to-end cleanup workflow (works on macOS 15.4+ — the recommended path)
+
+Because the Native Messaging route is blocked on current macOS, the actually-working cleanup is a CSV export/import roundtrip handled by `scripts/cleanup-csv.py`:
 
 ```bash
-# 1. Export Passwords.app to CSV (File -> Export Passwords)
-# 2. Generate a cleanup plan from the CSV
+# 1. In Passwords.app: File -> Export Passwords -> save as Passwords.csv
+# 2. Clean the CSV (dedupe, normalize titles, fix typos, drop junk)
+python3 scripts/cleanup-csv.py \
+    --in ~/Downloads/Passwords.csv \
+    --out ~/Downloads/Passwords-cleaned.csv \
+    --report ~/Downloads/Passwords-report.md \
+    --aggressive
+
+# 3. Read the report. Confirm the changes look right.
+# 4. In Passwords.app: select all entries (Cmd-A) -> Delete (entries go to 30-day trash, safe).
+# 5. In Passwords.app: File -> Import Passwords -> select Passwords-cleaned.csv.
+# 6. Spot-check 5-10 entries to confirm they imported correctly.
+```
+
+What the cleanup does:
+- Removes exact duplicates (same domain + same username)
+- Removes subdomain duplicates with `--aggressive` (e.g. `login.discover.com` + `portal.discover.com` -> `discover.com`)
+- Normalizes domain-style titles (`www.amazon.com` -> `Amazon`)
+- Fixes email typos (`@gmail.con` -> `@gmail.com`) and casing
+- Drops junk entries (titles with no URL + no password, dash-only usernames)
+- Preserves all kept entries' Password / Notes / OTPAuth fields verbatim
+
+Caveat: TOTP secrets and passkeys may not survive the export/import round-trip in all cases. Spot-check critical entries post-import.
+
+### Alternative: programmatic CRUD (when the Native Messaging route works)
+
+Once the macOS 15.4+ helper-spawn blocker is resolved upstream (see below), the same audit pipeline can drive bulk operations directly:
+
+```bash
 python3 scripts/audit.py --csv ~/Downloads/Passwords.csv --out /tmp/plan.json --aggressive
-
-# 3. Dry-run to inspect
 apwx batch --plan /tmp/plan.json --dry-run
-
-# 4. Apply for real
 apwx batch --plan /tmp/plan.json
 ```
 
@@ -121,21 +146,29 @@ This is a known upstream limitation tracked at [bendews/apw#10](https://github.c
 
 ## Verification status (current build)
 
-Items verified programmatically:
+**CSV cleanup pipeline (the working path on macOS 15.4+):**
+- ✅ `scripts/cleanup-csv.py` end-to-end tested
+- ✅ `tests/test-cleanup.sh` - 8/8 tests passing
+  - dedupe (exact + subdomain)
+  - typo fixes
+  - junk removal
+  - title normalization
+  - dupe-selection (preserves user A vs user B on same domain)
+  - report generation
+  - CSV format preservation
+
+Run `tests/test-cleanup.sh` to verify locally.
+
+**Native Messaging route (programmatic CRUD - blocked upstream):**
 - ✅ TypeScript compiles cleanly (`deno check`)
 - ✅ Binary builds (arm64 Mach-O, 77 MB)
 - ✅ Daemon starts and binds to ephemeral UDP port
-- ✅ Helper binary is reachable from manifest
+- ✅ Helper binary located + invoked from manifest
 - ✅ Transport round-trip works (pre-auth call returns `Status.INVALID_SESSION` correctly)
-- ✅ Protocol JSON schema reverse-engineered from Apple's official extension
+- ✅ Protocol JSON schema reverse-engineered from Apple's official extension v3.3.0
 - ✅ Write command implementations match official extension byte-for-byte
-
-Items blocked by macOS 15.4+ helper-spawn enforcement:
-- ❌ Completing the SRP pairing handshake (helper SIGKILL'd before responding)
-- ❌ Authenticated reads/writes
-- ❌ Live delete probe
-
-Run `scripts/e2e-test.sh` to attempt e2e on older macOS, or wait for an upstream workaround.
+- ❌ Live pairing — macOS 15.4+ SIGKILLs the helper before it can respond (bendews/apw#10)
+- ❌ Authenticated read/write/delete — gated on pairing
 
 ## Caveats
 
