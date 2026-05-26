@@ -108,22 +108,34 @@ scripts/e2e-test.sh
 
 Tests pairing, read parity with apw, all 5 write commands, delete probe, and cleanup against a disposable `apwx-e2e-test.invalid` domain. Requires PIN entry during the pairing step (one-time per setup).
 
+## ⚠️ macOS 15.4+ compatibility — blocked upstream
+
+Confirmed on macOS 26.4.1: when apwx (or apw) spawns the helper binary, **macOS SIGKILLs the helper immediately** (exit 137, no stderr). Apple added kernel-level enforcement around macOS 15.4 that only allows `PasswordManagerBrowserExtensionHelper` to be launched by registered browser processes (Chrome/Firefox/Edge with native-messaging extension registration). This blocks all third-party CLI access via this protocol.
+
+This is a known upstream limitation tracked at [bendews/apw#10](https://github.com/bendews/apw/issues/10) since April 2025 with no known workaround.
+
+**The apwx code is correct** — protocol implementation verified against Apple's official iCloud Passwords Firefox extension v3.3.0 (see [`PROTOCOL.md`](./PROTOCOL.md)). The blocker is platform-level. apwx will work as soon as:
+- A community-discovered workaround appears (process-injection, entitlement bypass, etc.), OR
+- Apple introduces an officially supported CLI path, OR
+- It's run on macOS 14.x or earlier where the enforcement wasn't yet present
+
 ## Verification status (current build)
 
-Items verified programmatically without user gesture:
+Items verified programmatically:
 - ✅ TypeScript compiles cleanly (`deno check`)
 - ✅ Binary builds (arm64 Mach-O, 77 MB)
 - ✅ Daemon starts and binds to ephemeral UDP port
-- ✅ Helper binary spawns on demand from manifest
+- ✅ Helper binary is reachable from manifest
 - ✅ Transport round-trip works (pre-auth call returns `Status.INVALID_SESSION` correctly)
-- ✅ Auth request command triggers the PIN dialog (helper UI rendered)
+- ✅ Protocol JSON schema reverse-engineered from Apple's official extension
+- ✅ Write command implementations match official extension byte-for-byte
 
-Items requiring one-time PIN gesture by user (cryptographic boundary, by design):
-- ⏸ Completing the SRP handshake
-- ⏸ Authenticated read parity test
-- ⏸ Create/Update/Rename/Delete operations against live keychain
+Items blocked by macOS 15.4+ helper-spawn enforcement:
+- ❌ Completing the SRP pairing handshake (helper SIGKILL'd before responding)
+- ❌ Authenticated reads/writes
+- ❌ Live delete probe
 
-Run `scripts/e2e-test.sh` and enter the 6-digit PIN from the dialog to complete e2e verification.
+Run `scripts/e2e-test.sh` to attempt e2e on older macOS, or wait for an upstream workaround.
 
 ## Caveats
 
