@@ -1,24 +1,24 @@
+
+# Build output
+# Compiled binary
 # Deno
-.cache
-deps
-deno-test-results.xml
-
-# TypeScript
-*.tsbuildinfo
-
+# Editor/IDE
 # Node.js
+# Other
+# TypeScript
+*.log
+*.psd
+*.sublime-project
+*.sublime-workspace
+*.tsbuildinfo
+.DS_Store
+.cache
+.idea
+.vscode
+/apwx
+deno-test-results.xml
+deps
+dist
 node_modules
 npm-debug.log
 yarn-error.log
-
-# Editor/IDE
-.vscode
-.idea
-*.sublime-project
-*.sublime-workspace
-
-# Build output
-dist
-
-# Other
-*.psd
