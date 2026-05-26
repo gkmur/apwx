@@ -1,6 +1,6 @@
-export const DATA_PATH = `${Deno.env.get("HOME")}/.apw`;
+export const DATA_PATH = `${Deno.env.get("HOME")}/.apwx`;
 
-export const VERSION = "1.0.1";
+export const VERSION = "0.1.0";
 
 export class APWError extends Error {
   code: Status;
@@ -29,6 +29,8 @@ export enum Command {
   ONE_TIME_CODE_AVAILABLE = 15,
   GET_ONE_TIME_CODES = 16,
   DID_FILL_ONE_TIME_CODE = 17,
+  SETUP_TOTP_GENERATOR = 18,
+  CHANGE_PASSWORD_FOR_LOGIN_NAME_AND_URL = 19,
   OPEN_URL_IN_SAFARI = 1984,
 }
 

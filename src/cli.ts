@@ -66,6 +66,15 @@ const otp = new Command()
     PrintEntries(await client.listOTPForURL(url));
   });
 
+const PrintResult = (result: { STATUS: Status } | unknown) => {
+  const r = result as { STATUS?: Status };
+  const status = r?.STATUS ?? Status.GENERIC_ERROR;
+  if (status !== Status.SUCCESS) {
+    throw new APWError(status);
+  }
+  console.log(JSON.stringify({ result: r, status: Status.SUCCESS }));
+};
+
 const pw = new Command()
   .description("Interactively list accounts/passwords.")
   .action(async () => {
@@ -97,6 +106,31 @@ const pw = new Command()
       throw new Error("Missing required argument 'url'.");
     }
     PrintEntries(await client.getLoginNamesForURL(url));
+  })
+  .command("new", "Create a new password entry.")
+  .arguments("<url:string> <username:string> <password:string>")
+  .action(async (_, url: string, username: string, password: string) => {
+    PrintResult(await client.newAccount(url, username, password));
+  })
+  .command("set", "Update the password for an existing entry.")
+  .arguments("<url:string> <username:string> <password:string>")
+  .action(async (_, url: string, username: string, password: string) => {
+    PrintResult(await client.setPassword(url, username, password));
+  })
+  .command("change", "Change password using the modern cmd 19 path.")
+  .arguments("<url:string> <username:string> <password:string>")
+  .action(async (_, url: string, username: string, password: string) => {
+    PrintResult(await client.changePassword(url, username, password));
+  })
+  .command("rename", "Rename the username on an entry.")
+  .arguments("<url:string> <username:string> <newUsername:string>")
+  .action(async (_, url: string, username: string, newUsername: string) => {
+    PrintResult(await client.renameAccount(url, username, newUsername));
+  })
+  .command("delete", "Delete an entry (probes actDelete path).")
+  .arguments("<url:string> <username:string>")
+  .action(async (_, url: string, username: string) => {
+    PrintResult(await client.deleteAccount(url, username));
   });
 
 const daemon = new Command()
@@ -156,15 +190,29 @@ const auth = new Command()
     console.log(JSON.stringify({ status: Status.SUCCESS }));
   });
 
+const batch = new Command()
+  .description("Apply a JSON plan of bulk operations against Apple Passwords.")
+  .option("--plan <path:string>", "Path to plan.json", { required: true })
+  .option("--dry-run", "Do not actually call write operations")
+  .action(async (options) => {
+    const { runBatch } = await import("./batch.ts");
+    await runBatch({
+      planPath: options.plan as string,
+      dryRun: Boolean(options["dryRun"]),
+      client,
+    });
+  });
+
 try {
   await new Command()
-    .name("apw-cli")
+    .name("apwx")
     .version(`v${VERSION}`)
-    .description("🔑 a CLI for Apple Passwords 🔒")
+    .description("🔑 apwx - extended CLI for Apple Passwords (read/write) 🔒")
     .command("auth", auth)
     .command("pw", pw)
     .command("otp", otp)
     .command("start", daemon)
+    .command("batch", batch)
     .parse(Deno.args);
 } catch (error: unknown) {
   let status = Status.GENERIC_ERROR;

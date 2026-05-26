@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://github.com/bendews/apw">
+  <a href="https://github.com/bendews/apwx">
     <img src="icon.png" alt="Logo" width="80" height="80">
   </a>
 
@@ -8,14 +8,14 @@
 <p align="center">
     A CLI for access to Apple Passwords. A foundation for enabling integration and automation.
     <br />
-    <a href="https://github.com/bendews/apw"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/bendews/apwx"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/bendews/apw">View Demo</a>
+    <a href="https://github.com/bendews/apwx">View Demo</a>
     ·
-    <a href="https://github.com/bendews/apw/issues">Report Bug</a>
+    <a href="https://github.com/bendews/apwx/issues">Report Bug</a>
     ·
-    <a href="https://github.com/bendews/apw/issues">Request Feature</a>
+    <a href="https://github.com/bendews/apwx/issues">Request Feature</a>
   </p>
 
 [![Contributors][contributors-shield]][contributors-url]
@@ -42,21 +42,21 @@ https://github.com/user-attachments/assets/8cb45571-d164-4e28-aa6e-64d27705d6d2
 
 ## Getting Started
 
-Ensure homebrew is installed or build `apw` from source.
+Ensure homebrew is installed or build `apwx` from source.
 
 ### Installation
 
-To install APW and configure it to run automatically at system startup, follow
+To install APWX and configure it to run automatically at system startup, follow
 these steps using Homebrew:
 
-1. Install APW:
+1. Install APWX:
    ```
-   brew install bendews/homebrew-tap/apw
+   brew install bendews/homebrew-tap/apwx
    ```
 
-2. Enable the APW service to start on boot:
+2. Enable the APWX service to start on boot:
    ```
-   brew services start apw
+   brew services start apwx
    ```
 
 ## Integrations
@@ -75,25 +75,25 @@ The following are some future integration ideas:
 ## Usage
 
 Ensure the daemon is running in the background, either via
-`brew services start apw` or `apw start`.
+`brew services start apwx` or `apwx start`.
 
 To authenticate the daemon interactively:
 
 _This is required every time the daemon starts i.e on boot_
 
-`apw auth`
+`apwx auth`
 
 Query for available passwords (Interactive):
 
-`apw pw`
+`apwx pw`
 
 Query for available passwords (JSON output):
 
-`apw pw list google.com`
+`apwx pw list google.com`
 
 View more commands & help:
 
-`apw --help`
+`apwx --help`
 
 ```shell
 Options:
@@ -129,7 +129,7 @@ deno run --allow-all src/cli.ts <OPTIONS>
 To build a statically compiled binary:
 
 ```
-deno compile --allow-all -o apw src/cli.ts
+deno compile --allow-all -o apwx src/cli.ts
 ```
 
 ## Contributing
@@ -156,7 +156,7 @@ Distributed under the GPL V3.0 License. See `LICENSE` for more information.
 
 Ben Dews - [#](https://bendews.com)
 
-Project Link: [https://github.com/bendews/apw](https://github.com/bendews/apw)
+Project Link: [https://github.com/bendews/apwx](https://github.com/bendews/apwx)
 
 <!-- ACKNOWLEDGMENTS -->
 
@@ -168,14 +168,14 @@ Project Link: [https://github.com/bendews/apw](https://github.com/bendews/apw)
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-[contributors-shield]: https://img.shields.io/github/contributors/bendews/apw.svg?style=for-the-badge
-[contributors-url]: https://github.com/bendews/apw/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/bendews/apw.svg?style=for-the-badge
-[forks-url]: https://github.com/bendews/apw/network/members
-[stars-shield]: https://img.shields.io/github/stars/bendews/apw.svg?style=for-the-badge
-[stars-url]: https://github.com/bendews/apw/stargazers
-[issues-shield]: https://img.shields.io/github/issues/bendews/apw.svg?style=for-the-badge
-[issues-url]: https://github.com/bendews/apw/issues
-[license-shield]: https://img.shields.io/github/license/bendews/apw.svg?style=for-the-badge
-[license-url]: https://github.com/bendews/apw/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/bendews/apwx.svg?style=for-the-badge
+[contributors-url]: https://github.com/bendews/apwx/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/bendews/apwx.svg?style=for-the-badge
+[forks-url]: https://github.com/bendews/apwx/network/members
+[stars-shield]: https://img.shields.io/github/stars/bendews/apwx.svg?style=for-the-badge
+[stars-url]: https://github.com/bendews/apwx/stargazers
+[issues-shield]: https://img.shields.io/github/issues/bendews/apwx.svg?style=for-the-badge
+[issues-url]: https://github.com/bendews/apwx/issues
+[license-shield]: https://img.shields.io/github/license/bendews/apwx.svg?style=for-the-badge
+[license-url]: https://github.com/bendews/apwx/blob/master/LICENSE.txt
 [product-screenshot]: images/screenshot.png

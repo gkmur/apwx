@@ -138,6 +138,163 @@ export const APWMessages = {
     };
   },
 
+  async newAccount(
+    session: SRPSession,
+    url: string,
+    username: string,
+    password: string,
+  ): Promise<Message> {
+    const sdata = session.serialize(
+      await session.encrypt({
+        ACT: Action.ADD_NEW,
+        URL: "",
+        USR: "",
+        PWD: "",
+        NURL: url,
+        NUSR: username,
+        NPWD: password,
+      }),
+    );
+    return {
+      cmd: Command.NEW_ACCOUNT_FOR_URL,
+      tabId: 1,
+      frameId: 1,
+      payload: JSON.stringify({
+        QID: "CmdNewAccount4URL",
+        SMSG: {
+          TID: session.username,
+          SDATA: sdata,
+        },
+      }),
+    };
+  },
+
+  async setPassword(
+    session: SRPSession,
+    url: string,
+    username: string,
+    password: string,
+    currentPassword = "",
+  ): Promise<Message> {
+    const sdata = session.serialize(
+      await session.encrypt({
+        ACT: Action.UPDATE,
+        URL: url,
+        USR: username,
+        PWD: currentPassword,
+        NURL: url,
+        NUSR: username,
+        NPWD: password,
+      }),
+    );
+    return {
+      cmd: Command.SET_PASSWORD_FOR_LOGIN_NAME_AND_URL,
+      tabId: 1,
+      frameId: 1,
+      payload: JSON.stringify({
+        QID: "CmdSetPassword4LoginName_URL",
+        SMSG: {
+          TID: session.username,
+          SDATA: sdata,
+        },
+      }),
+    };
+  },
+
+  async changePassword(
+    session: SRPSession,
+    url: string,
+    username: string,
+    newPassword: string,
+  ): Promise<Message> {
+    const sdata = session.serialize(
+      await session.encrypt({
+        ACT: Action.UPDATE,
+        URL: url,
+        USR: username,
+        PWD: "",
+        NURL: url,
+        NUSR: username,
+        NPWD: newPassword,
+      }),
+    );
+    return {
+      cmd: Command.CHANGE_PASSWORD_FOR_LOGIN_NAME_AND_URL,
+      tabId: 1,
+      frameId: 1,
+      payload: JSON.stringify({
+        QID: "CmdChangePasswordForLoginName_URL",
+        SMSG: {
+          TID: session.username,
+          SDATA: sdata,
+        },
+      }),
+    };
+  },
+
+  async deleteAccount(
+    session: SRPSession,
+    url: string,
+    username: string,
+  ): Promise<Message> {
+    // Protocol allows actDelete=0 - probe with cmd 6 first; helper either
+    // accepts and returns SUCCESS, or returns FAILED_TO_DELETE/UNKNOWN_ACTION.
+    const sdata = session.serialize(
+      await session.encrypt({
+        ACT: Action.DELETE,
+        URL: url,
+        USR: username,
+        PWD: "",
+        NURL: url,
+        NUSR: username,
+        NPWD: "",
+      }),
+    );
+    return {
+      cmd: Command.SET_PASSWORD_FOR_LOGIN_NAME_AND_URL,
+      tabId: 1,
+      frameId: 1,
+      payload: JSON.stringify({
+        QID: "CmdSetPassword4LoginName_URL",
+        SMSG: {
+          TID: session.username,
+          SDATA: sdata,
+        },
+      }),
+    };
+  },
+
+  async renameAccount(
+    session: SRPSession,
+    url: string,
+    username: string,
+    newUsername: string,
+  ): Promise<Message> {
+    const sdata = session.serialize(
+      await session.encrypt({
+        ACT: Action.UPDATE,
+        URL: url,
+        USR: username,
+        PWD: "",
+        NURL: url,
+        NUSR: newUsername,
+        NPWD: "",
+      }),
+    );
+    return {
+      cmd: Command.SET_PASSWORD_FOR_LOGIN_NAME_AND_URL,
+      tabId: 1,
+      frameId: 1,
+      payload: JSON.stringify({
+        QID: "CmdSetPassword4LoginName_URL",
+        SMSG: {
+          TID: session.username,
+          SDATA: sdata,
+        },
+      }),
+    };
+  },
+
   verifyChallenge(
     session: SRPSession,
     m: Buffer,
@@ -368,6 +525,67 @@ export class ApplePasswordManager {
     const msg = await APWMessages.listOTPForURL(
       this.session,
       `http://${url}`,
+    );
+    const { payload } = await this.sendMessage(msg);
+    const response = await this.decryptPayload(payload);
+    return response;
+  }
+
+  async newAccount(url: string, username: string, password: string) {
+    const msg = await APWMessages.newAccount(
+      this.session,
+      url,
+      username,
+      password,
+    );
+    const { payload } = await this.sendMessage(msg);
+    const response = await this.decryptPayload(payload);
+    return response;
+  }
+
+  async setPassword(
+    url: string,
+    username: string,
+    password: string,
+    currentPassword?: string,
+  ) {
+    const msg = await APWMessages.setPassword(
+      this.session,
+      url,
+      username,
+      password,
+      currentPassword,
+    );
+    const { payload } = await this.sendMessage(msg);
+    const response = await this.decryptPayload(payload);
+    return response;
+  }
+
+  async changePassword(url: string, username: string, newPassword: string) {
+    const msg = await APWMessages.changePassword(
+      this.session,
+      url,
+      username,
+      newPassword,
+    );
+    const { payload } = await this.sendMessage(msg);
+    const response = await this.decryptPayload(payload);
+    return response;
+  }
+
+  async deleteAccount(url: string, username: string) {
+    const msg = await APWMessages.deleteAccount(this.session, url, username);
+    const { payload } = await this.sendMessage(msg);
+    const response = await this.decryptPayload(payload);
+    return response;
+  }
+
+  async renameAccount(url: string, username: string, newUsername: string) {
+    const msg = await APWMessages.renameAccount(
+      this.session,
+      url,
+      username,
+      newUsername,
     );
     const { payload } = await this.sendMessage(msg);
     const response = await this.decryptPayload(payload);
