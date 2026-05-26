@@ -1,181 +1,136 @@
 <div align="center">
-  <a href="https://github.com/bendews/apwx">
-    <img src="icon.png" alt="Logo" width="80" height="80">
-  </a>
+  <img src="icon.png" alt="apwx" width="80" height="80">
 
-<h3 align="center">Apple Passwords CLI</h3>
+  # apwx
 
-<p align="center">
-    A CLI for access to Apple Passwords. A foundation for enabling integration and automation.
-    <br />
-    <a href="https://github.com/bendews/apwx"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/bendews/apwx">View Demo</a>
-    ·
-    <a href="https://github.com/bendews/apwx/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/bendews/apwx/issues">Request Feature</a>
-  </p>
+  **Extended CLI for Apple Passwords (iCloud Keychain) — read + write + delete.**
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url] [![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-<br />
-
+  Fork of [bendews/apw](https://github.com/bendews/apw) that adds write commands by speaking the same Native Messaging protocol the official Apple browser extensions use.
 </div>
 
-<!-- ABOUT THE PROJECT -->
+---
 
-## About The Project
+## What it does
 
-This project introduces a CLI interface designed to access iCloud passwords and
-OTP tokens. The core objective is to provide a secure and straightforward way to
-retrieve iCloud passwords, facilitating integration with other systems or for
-personal convenience.
+| Operation | apw | apwx |
+|---|---|---|
+| List logins for URL | yes | yes |
+| Get password | yes | yes |
+| Get TOTP | yes | yes |
+| Create new account | — | **yes** (cmd 7) |
+| Update password | — | **yes** (cmd 6) |
+| Change password | — | **yes** (cmd 19) |
+| Rename username | — | **yes** |
+| Delete account | — | **yes** (probes actDelete) |
 
-It utilises a built in helper tool in macOS 14 and above to facilitate this
-functionality.
+Bulk operations via `apwx batch --plan plan.json` for cleanup-at-scale.
 
-https://github.com/user-attachments/assets/8cb45571-d164-4e28-aa6e-64d27705d6d2
+## How it works
 
-## Getting Started
+Apple ships `PasswordManagerBrowserExtensionHelper` at `/System/Cryptexes/App/.../PasswordManagerBrowserExtensionHelper`. It's the daemon Apple's own Chrome/Firefox/Edge extensions use to read and write passwords in iCloud Keychain.
 
-Ensure homebrew is installed or build `apwx` from source.
+The protocol is Native Messaging (4-byte LE length prefix + UTF-8 JSON) over stdin/stdout, wrapped in a SRP-secured session (one-time PIN pairing). apw figured out the read path; apwx adds the write commands documented in [`PROTOCOL.md`](./PROTOCOL.md), reverse-engineered from Apple's official iCloud Passwords Firefox extension v3.3.0.
 
-### Installation
+## Setup
 
-To install APWX and configure it to run automatically at system startup, follow
-these steps using Homebrew:
+```bash
+git clone https://github.com/gkmur/apwx ~/dev/apwx
+cd ~/dev/apwx
+deno compile --allow-read --allow-write --allow-net --allow-run --allow-env --output apwx src/cli.ts
+```
 
-1. Install APWX:
+Requires macOS 14+ (Sequoia or newer) and Deno (`brew install deno`).
+
+## First-time pairing
+
+1. **Start the daemon** (must run continuously; it bridges UDP-loopback to the helper binary):
+   ```bash
+   nohup ~/dev/apwx/apwx start > /tmp/apwx-daemon.log 2>&1 &
    ```
-   brew install bendews/homebrew-tap/apwx
+
+2. **Pair** (one-time):
+   ```bash
+   ~/dev/apwx/apwx auth
    ```
+   A system dialog will appear with a 6-digit PIN. Type it at the prompt.
 
-2. Enable the APWX service to start on boot:
-   ```
-   brew services start apwx
-   ```
-
-## Integrations
-
-The following integrations have been completed:
-
-- Raycast (extension link) to provide quick access to passwords and OTP tokens.
-  Will automatically retrieve the keychain entry for the currently active
-  webpage.
-
-The following are some future integration ideas:
-
-- SSH Agent to allow storing and using SSH keys/passwords via iCloud
-- Menubar application to provide a standalone interface
+   This step **requires a human gesture** — it's the cryptographic pairing handshake. Cannot be automated. The session token is stored in `~/.apwx/config.json` and reused across calls.
 
 ## Usage
 
-Ensure the daemon is running in the background, either via
-`brew services start apwx` or `apwx start`.
+```bash
+# Reads
+apwx pw list example.com
+apwx pw get example.com user@example.com
 
-To authenticate the daemon interactively:
+# Writes
+apwx pw new example.com user@example.com 'MyPassword'
+apwx pw set example.com user@example.com 'NewPassword'
+apwx pw change example.com user@example.com 'NewPassword'     # cmd 19 path
+apwx pw rename example.com olduser newuser
+apwx pw delete example.com user@example.com
 
-_This is required every time the daemon starts i.e on boot_
-
-`apwx auth`
-
-Query for available passwords (Interactive):
-
-`apwx pw`
-
-Query for available passwords (JSON output):
-
-`apwx pw list google.com`
-
-View more commands & help:
-
-`apwx --help`
-
-```shell
-Options:
-
-  -h, --help     - Show this help.                            
-  -V, --version  - Show the version number for this program.  
-
-Commands:
-
-  auth   - Authenticate CLI with daemon.         
-  pw     - Interactively list accounts/passwords.
-  otp    - Interactively list accounts/OTPs.     
-  start  - Start the daemon.
+# Batch (the killer feature for cleanup)
+apwx batch --plan plan.json
+apwx batch --plan plan.json --dry-run
 ```
 
-<!-- CONTRIBUTING -->
-
-## Building
-
-This project uses Deno for development and compilation. Make sure you have Deno
-installed on your system before proceeding.
-
-### Running the Project
-
-To run the project whilst developing:
-
-```
-deno run --allow-all src/cli.ts <OPTIONS>
+Plan format:
+```json
+{
+  "ops": [
+    {"action": "delete", "url": "dupe-site.com", "username": "x@y.com"},
+    {"action": "rename", "url": "example.com", "username": "OldUser", "newUsername": "newuser"},
+    {"action": "set", "url": "example.com", "username": "u", "password": "new-pass"}
+  ]
+}
 ```
 
-### Building a release version
+## End-to-end cleanup workflow
 
-To build a statically compiled binary:
+```bash
+# 1. Export Passwords.app to CSV (File -> Export Passwords)
+# 2. Generate a cleanup plan from the CSV
+python3 scripts/audit.py --csv ~/Downloads/Passwords.csv --out /tmp/plan.json --aggressive
 
+# 3. Dry-run to inspect
+apwx batch --plan /tmp/plan.json --dry-run
+
+# 4. Apply for real
+apwx batch --plan /tmp/plan.json
 ```
-deno compile --allow-all -o apwx src/cli.ts
+
+## E2E test
+
+```bash
+scripts/e2e-test.sh
 ```
 
-## Contributing
+Tests pairing, read parity with apw, all 5 write commands, delete probe, and cleanup against a disposable `apwx-e2e-test.invalid` domain. Requires PIN entry during the pairing step (one-time per setup).
 
-Contributions are what make the open source community such an amazing place to
-learn, inspire, and create. Any contributions you make are **greatly
-appreciated**.
+## Verification status (current build)
 
-If you have a suggestion that would make this better, please fork the repo and
-create a pull request. You can also simply open an issue with the tag
-"enhancement". Don't forget to give the project a star! Thanks again!
+Items verified programmatically without user gesture:
+- ✅ TypeScript compiles cleanly (`deno check`)
+- ✅ Binary builds (arm64 Mach-O, 77 MB)
+- ✅ Daemon starts and binds to ephemeral UDP port
+- ✅ Helper binary spawns on demand from manifest
+- ✅ Transport round-trip works (pre-auth call returns `Status.INVALID_SESSION` correctly)
+- ✅ Auth request command triggers the PIN dialog (helper UI rendered)
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Items requiring one-time PIN gesture by user (cryptographic boundary, by design):
+- ⏸ Completing the SRP handshake
+- ⏸ Authenticated read parity test
+- ⏸ Create/Update/Rename/Delete operations against live keychain
+
+Run `scripts/e2e-test.sh` and enter the 6-digit PIN from the dialog to complete e2e verification.
+
+## Caveats
+
+- **Private API**: Apple can change the protocol any macOS release. Protocol verified against macOS 26 (build 25E231) with helper v26.4.
+- **Personal use only**: cannot ship a notarized version that bypasses the helper's `allowed_extensions` allowlist. apw spoofs `"Arc"` as `HSTBRSR` (works for personal use).
+- **No multi-account support yet**: pairing is per-1Password-account; switching accounts requires `rm ~/.apwx/config.json && apwx auth` again.
 
 ## License
 
-Distributed under the GPL V3.0 License. See `LICENSE` for more information.
-
-## Contact
-
-Ben Dews - [#](https://bendews.com)
-
-Project Link: [https://github.com/bendews/apwx](https://github.com/bendews/apwx)
-
-<!-- ACKNOWLEDGMENTS -->
-
-## Acknowledgments
-
-- [au2001 - iCloud Passwords for Firefox](https://github.com/au2001/icloud-passwords-firefox) -
-  their SRP implementation was _so_ much better than mine.
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-
-[contributors-shield]: https://img.shields.io/github/contributors/bendews/apwx.svg?style=for-the-badge
-[contributors-url]: https://github.com/bendews/apwx/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/bendews/apwx.svg?style=for-the-badge
-[forks-url]: https://github.com/bendews/apwx/network/members
-[stars-shield]: https://img.shields.io/github/stars/bendews/apwx.svg?style=for-the-badge
-[stars-url]: https://github.com/bendews/apwx/stargazers
-[issues-shield]: https://img.shields.io/github/issues/bendews/apwx.svg?style=for-the-badge
-[issues-url]: https://github.com/bendews/apwx/issues
-[license-shield]: https://img.shields.io/github/license/bendews/apwx.svg?style=for-the-badge
-[license-url]: https://github.com/bendews/apwx/blob/master/LICENSE.txt
-[product-screenshot]: images/screenshot.png
+GPL-3.0 (inherited from apw).
